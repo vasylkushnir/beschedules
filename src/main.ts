@@ -1,7 +1,12 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  Logger,
+  ValidationPipe,
+} from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { HttpLoggingInterceptor } from './interceptors/http-logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,14 +27,18 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // викидає зайві поля
-      forbidNonWhitelisted: true, // 400 якщо є зайві поля
-      transform: true, // перетворює типи (query/params/body)
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  //await app.listen(process.env.PORT ?? 3000);
+  app.useGlobalInterceptors(
+    new HttpLoggingInterceptor(),
+    new ClassSerializerInterceptor(app.get(Reflector)),
+  );
+  app.useLogger(['error', 'warn', 'log']);
   await app.listen(Number(process.env.PORT) || 3000, '0.0.0.0');
+  Logger.log(`HTTP server started on :${process.env.PORT}`, 'Bootstrap');
 }
 bootstrap();
